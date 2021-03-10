@@ -13,7 +13,6 @@ Class DB
 		if(!self::$pdo){
 			die("Conexão não definida");
 		}
-
 	}
 
 	public static function connect($conn)
