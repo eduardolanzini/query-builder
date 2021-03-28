@@ -61,13 +61,13 @@ Class DB
 		self::prefix();
 
 		try {
-
+			
 			$qry = self::$pdo->prepare(self::$sql);
 			$qry->execute();
 
 			self::$sql = null;
 
-			return $qry->fetch(PDO::FETCH_OBJ);
+			return $qry->fetchAll(PDO::FETCH_OBJ);
 
 		} catch (\PDOException $e) {
 
@@ -75,8 +75,25 @@ Class DB
 		}
 	}
 
-	static function pluck($column) {
+	static function execute()
+	{
+		try {
+			
+			$qry = self::$pdo->prepare(self::$sql);
+			$qry->execute();
 
+			self::$sql = null;
+
+			return $qry;
+
+		} catch (\PDOException $e) {
+
+			die("get: ".$e->getMessage());
+		}
+	}
+
+	static function pluck($column)
+	{
 		self::prefix();
 
 		self::$sql = str_replace('SELECT *', 'SELECT '.$column, self::$sql);
@@ -105,8 +122,8 @@ Class DB
 		}
 	}
 
-	static function count() {
-
+	static function count()
+	{
 		self::prefix();
 
 		try {
@@ -124,132 +141,63 @@ Class DB
 		}
 	}
 
-	static function toSql() {
-
-		self::prefix();
-		echo self::$sql;
-		self::$sql = null;
-	}
-
-	static function group($column) {
-
+	static function group($column)
+	{
 		$prefix = preg_match("/GROUP BY/", self::$sql) ? "," : " GROUP BY ";
 
 		self::$sql .= $prefix." $column";
-		return new self;
 
+		return new self;
 	}
 
-	static function having($column, $value, $operator=null) {
-
+	static function having($column, $value, $operator=null)
+	{
 		$o = isset($operator) ? $value : '=';
 		$v = isset($operator) ? $operator : $value;
 
 		self::$sql .= " HAVING $column $o '$v' ";
+
 		return new self;
 	}
 
-	static function order($column=null, $sort='ASC') {
-
+	static function order($column=null, $sort='ASC')
+	{
 		$column = isset($column) ? $column : ' ordem ';
 
 		$prefix = preg_match("/ORDER BY/", self::$sql) ? "," : " ORDER BY ";
 
 		self::$sql .= $prefix." $column $sort ";
-		return new self;
-	}
-
-	static function orderBy($column=null, $sort='ASC') {
-
-		return self::order($column, $sort);
-	}
-
-	static function orderAsc($column=null) {
-
-		return self::order($column, 'ASC');
-	}
-
-	static function orderDesc($column=null) {
-
-		return self::order($column, 'DESC');
-	}
-
-	static function orderField($column, $array, $sort='ASC') {
-
-		$column = isset($column) ? $column : ' ordem ';
-		$prefix = preg_match("/ORDER BY/", self::$sql) ? "," : " ORDER BY ";
-
-		self::$sql .= $prefix." FIELD($column , '".implode('\',\'', $array)."') $sort ";
 
 		return new self;
 	}
 
-	static function orderByField($column, $array, $sort='ASC') {
-
-		return self::orderField($column, $array, $sort);
-	}
-
-	static function orderRaw($statement) {
-
-		$prefix = preg_match("/ORDER BY/", self::$sql) ? "," : " ORDER BY ";
-		self::$sql .= $prefix." ".$statement;
-		return new self;
-	}
-
-	static function orderByRaw($statement) {
-
-		return self::orderRaw($statement);
-	}
-
-	static function rand() {
-
+	static function rand()
+	{
 		self::$sql .= " ORDER BY RAND() ";
 		return new self;
 	}
 
-	static function random() { /*pgsql*/
-
-		self::$sql .= " ORDER BY RANDOM() ";
-		return new self;
-	}
-
-	static function first($column=null) {
-
+	static function first($column=null)
+	{
 		self::$sql .= (isset($column) ? " ORDER BY ".$column. " ASC " : "")." LIMIT 1 OFFSET 0";
-		return self::get()[0];
+
+		return !empty($result = self::get()) ? $result[0] : false;
 	}
 
-	static function last($column=null) {
-
+	static function last($column=null)
+	{
 		self::$sql .= " ORDER BY ".($column ?: "id"). " DESC LIMIT 1 OFFSET 0";
 		return self::get()[0];
 	}
 
-	static function limit($limit, $offset=null) {
-
-		$o = isset($offset) ? $limit : 0;
-		$l = isset($offset) ? $offset : $limit;
-
-		self::$sql .= " LIMIT $l OFFSET $o ";
+	static function limit(int $limit, int $offset=0)
+	{
+		self::$sql .= " LIMIT $limit OFFSET $offset ";
 		return new self;
 	}
 
-	static function offset($start) {
-
-		if (preg_match("/OFFSET 0/", self::$sql)) {
-
-			self::$sql = str_replace("OFFSET 0", "", self::$sql);
-		}
-
-		$prefix = preg_match("/LIMIT/", self::$sql)
-		? self::$sql .= " OFFSET $start "
-		: self::$sql .= " LIMIT 18446744073709551615 OFFSET $start ";
-
-		return new self;
-	}
-
-	static function select($columns='*') {
-
+	static function select($columns='*')
+	{
 		if ($columns!='*') $columns = is_array($columns) ? implode(',', $columns) : $columns;
 
 		self::prefix();
@@ -259,8 +207,8 @@ Class DB
 		return new self;
 	}
 
-	static function cont($column=null, $alias='total') {
-
+	static function cont($column=null, $alias='total')
+	{
 		$column = isset($column) ? $column : 'id';
 
 		self::prefix();
@@ -269,40 +217,40 @@ Class DB
 		return self::get()[0]->$alias;
 	}
 
-	static function max($column, $alias='max') {
-
+	static function max($column, $alias='max')
+	{
 		self::prefix();
 		self::$sql = str_replace('SELECT *', 'SELECT MAX('.$column.') AS '.$alias.' ', self::$sql);
 
 		return self::get()[0]->$alias;
 	}
 
-	static function min($column, $alias='min') {
-
+	static function min($column, $alias='min')
+	{
 		self::prefix();
 		self::$sql = str_replace('SELECT *', 'SELECT MIN('.$column.') AS '.$alias.' ', self::$sql);
 
 		return self::get()[0]->$alias;
 	}
 
-	static function avg($column, $alias='avg') {
-
+	static function avg($column, $alias='avg')
+	{
 		self::prefix();
 		self::$sql = str_replace('SELECT *', 'SELECT AVG('.$column.') AS '.$alias.' ', self::$sql);
 
 		return self::get()[0]->$alias;
 	}
 
-	static function sum($column, $alias='sum') {
-
+	static function sum($column, $alias='sum')
+	{
 		self::prefix();
 		self::$sql = str_replace('SELECT *', 'SELECT SUM('.$column.') AS '.$alias.' ', self::$sql);
 
 		return self::get()[0]->$alias;
 	}
 
-	static function join($table, $column, $column2, $operator=null) {
-
+	static function join($table, $column, $column2, $operator=null)
+	{
 		$o  = isset($operator) ? $column2 : '=';
 		$c2 = isset($operator) ? $operator : $column2;
 
@@ -310,8 +258,8 @@ Class DB
 		return new self;
 	}
 
-	static function leftJoin($table, $column, $column2, $operator=null) {
-
+	static function leftJoin($table, $column, $column2, $operator=null)
+	{
 		$o  = ($operator) ? $column2 : '=';
 		$c2 = ($operator) ?: $column2;
 
@@ -319,8 +267,8 @@ Class DB
 		return new self;
 	}
 
-	static function rightJoin($table, $column, $column2, $operator=null) {
-
+	static function rightJoin($table, $column, $column2, $operator=null)
+	{
 		$o  = ($operator) ? $column2 : '=';
 		$c2 = ($operator) ?: $column2;
 
@@ -328,27 +276,13 @@ Class DB
 		return new self;
 	}
 
-	static function all() {
-
+	static function all()
+	{
 		return self::get();
 	}
 
-	static function actives($column=null, $value=1) {
-
-		$column = isset($column) ? $column : 'status';
-		$value  = is_int($value) ? (int)$value : "'".$value."'";
-
-		self::prefix();
-
-		self::statement();
-
-		self::$sql .= " $column = $value ";
-
-		return new self;
-	}
-
-	static function find($value, $column=null) {
-
+	static function find($value, $column = null)
+	{
 		$v = isset($column) ? $column : $value;
 		$c = isset($column) ? $value  : 'id';
 
@@ -356,19 +290,23 @@ Class DB
 
 		$count = self::$pdo->query(self::$sql)->rowCount();
 
-		return ($count==1) ? self::get()[0] : false;
+		return ($count>=1) ? self::get()[0] : false;
 
 		self::$sql = null;
 	}
 
-	static function statement( $operator = " AND " ) {
-
+	static function statement($operator = " AND ")
+	{
 		self::$sql .= preg_match("/WHERE/", self::$sql) ? $operator : " WHERE ";
 
 		return new self;
 	}
 
-	static function where($column, $value, $operator=null) {
+	static function where($column, $value, $operator=null)
+	{
+		if(is_null($column)){
+			return new self;
+		}
 
 		$o = isset($operator) ? $value : '=';
 		$v = isset($operator) ? $operator : $value;
@@ -380,8 +318,8 @@ Class DB
 		return new self;
 	}
 
-	static function orWhere($column, $value, $operator=null) {
-
+	static function orWhere($column, $value, $operator=null)
+	{
 		$o = isset($operator) ? $value : '=';
 		$v = isset($operator) ? $operator : $value;
 
@@ -392,32 +330,8 @@ Class DB
 		return new self;
 	}
 
-	static function whereIn($column, $array=null) {
-
-		$c = isset($array) ? $column : 'id';
-		$a = isset($array) ? $array : $column;
-
-		self::statement();
-
-		self::$sql .= " $c IN ('".implode('\',\'', $a)."') ";
-
-		return new self;
-	}
-
-	static function whereNotIn($column, $array=null) {
-
-		$c = isset($array) ? $column : 'id';
-		$a = isset($array) ? $array : $column;
-
-		self::statement();
-
-		self::$sql .= " $c NOT IN ('".implode('\',\'', $a)."') ";
-
-		return new self;
-	}
-
-	static function isNull($column, $operator="AND") {
-
+	static function isNull($column, $operator="AND")
+	{
 		self::statement( $operator );
 
 		self::$sql .= " $column IS NULL ";
@@ -425,17 +339,17 @@ Class DB
 		return new self;
 	}
 
-	static function isNotNull($column, $operator="AND") {
-
-		self::statement( $operator );
+	static function isNotNull($column, $operator="AND")
+	{
+		self::statement($operator);
 
 		self::$sql .= " $column IS NOT NULL ";
 
 		return new self;
 	}
 
-	static function match() {
-
+	static function match()
+	{
 		$args = func_get_args();
 
 		self::statement();
@@ -445,15 +359,15 @@ Class DB
 		return new self;
 	}
 
-	static function against($search_terms) {
-
+	static function against($search_terms)
+	{
 		self::$sql .= " AGAINST('$search_terms' IN BOOLEAN MODE)";
 
 		return new self;
 	}
 
-	static function like($column, $value) {
-
+	static function like($column, $value)
+	{
 		self::statement();
 
 		self::$sql .= " $column LIKE '%$value%' ";
@@ -461,26 +375,17 @@ Class DB
 		return new self;
 	}
 
-	static function startLike($column, $value) {
+	static function orLike($column, $value)
+	{
+		self::statement("OR");
 
-		self::statement();
-
-		self::$sql .= " $column LIKE '$value%' ";
-
-		return new self;
-	}
-
-	static function endLike($column, $value) {
-
-		self::statement();
-
-		self::$sql .= " $column LIKE '%$value' ";
+		self::$sql .= " $column LIKE '%$value%' ";
 
 		return new self;
 	}
 
-	static function between($column, $start, $end) {
-
+	static function between($column, $start, $end)
+	{
 		self::statement();
 
 		self::$sql .= " $column BETWEEN '$start' AND '$end' ";
@@ -488,20 +393,14 @@ Class DB
 		return new self;
 	}
 
-	static function queryRaw($statement) {
-
-		self::$sql = $statement;
-		return new self;
-	}
-
-	static function raw($statement) {
-
+	static function raw($statement)
+	{
 		self::$sql .= $statement;
 		return new self;
 	}
 
-	static function insert($request) {
-
+	static function insert($request)
+	{
 		$values  = is_array($request) ? $request : (array)$request;
 		$columns = array_keys($values);
 
@@ -533,8 +432,8 @@ Class DB
 		}
 	}
 
-	static function update($request, $column=null, $operator=null, $value=null) {
-
+	static function update($request, $column=null, $operator=null, $value=null)
+	{
 		$values = is_array($request) ? $request : (array)$request;
 		$fields = array_keys($values);
 
@@ -589,8 +488,8 @@ Class DB
 		}
 	}
 
-	static function delete($value=null, $operator=null, $column=null) {
-
+	static function delete($value=null, $operator=null, $column=null)
+	{
 		if ($value) {
 
 			$v = isset($column) ? $column : ($operator ?: $value);
@@ -621,8 +520,8 @@ Class DB
 		}
 	}
 
-	static function truncate() {
-
+	static function truncate()
+	{
 		$sql = "TRUNCATE ".self::$table;
 
 		try {
@@ -638,5 +537,4 @@ Class DB
 			die("truncate: " . $e->getMessage());
 		}
 	}
-
 }
