@@ -27,7 +27,7 @@ Class DB
 					self::$pdo = new \PDO($conn->driver . ':host=' . $conn->host . ';'.'port='.$conn->port.';'.$conn->charset.'dbname=' . $conn->database, $conn->user, $conn->pass);
 				} catch (\PDOException $e) {
 					 //echo $e->getMessage();
-					 exit('Erro ao conectar com o banco de dados');
+					exit('Erro ao conectar com o banco de dados');
 				}
 				
 				self::$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
@@ -46,6 +46,9 @@ Class DB
 	static function table($table)
 	{
 		self::$table = $table;
+
+		self::$sql = preg_match("/SELECT/", self::$sql) ? self::$sql." FROM ".self::$table.' ' : self::$sql;
+
 		return new self;
 	}
 
@@ -56,6 +59,11 @@ Class DB
 		return new self;
 	}
 
+	static function exec()
+	{
+		self::get();
+	}
+	
 	static function get()
 	{
 		self::prefix();
@@ -67,7 +75,41 @@ Class DB
 
 			self::$sql = null;
 
-			return $qry->fetch(PDO::FETCH_OBJ);
+			return $qry->fetchAll(PDO::FETCH_OBJ);
+
+		} catch (\PDOException $e) {
+
+			die("get: ".$e->getMessage());
+		}
+	}
+
+
+	static function find($value=null, $column=null) {
+
+		if($value){
+			$v = isset($column) ? $column : $value;
+			$c = isset($column) ? $value  : 'id';
+			self::prefix();
+			self::where($c,$v);
+			
+		}else{
+			self::prefix();
+		}
+		
+		try {
+
+			$qry = self::$pdo->prepare(self::$sql);
+			$qry->execute();
+
+			$count = self::$pdo->query(self::$sql)->rowCount();
+
+			if ($count==1) {
+				self::$sql = null;
+				return $qry->fetch(PDO::FETCH_OBJ);
+			}else{
+				self::$sql = null;
+				return false;
+			}
 
 		} catch (\PDOException $e) {
 
@@ -124,11 +166,16 @@ Class DB
 		}
 	}
 
+	static function getSql(){
+		return self::$sql;
+	}
+
 	static function toSql() {
 
 		self::prefix();
 		echo self::$sql;
 		self::$sql = null;
+		exit;
 	}
 
 	static function group($column) {
@@ -149,9 +196,7 @@ Class DB
 		return new self;
 	}
 
-	static function order($column=null, $sort='ASC') {
-
-		$column = isset($column) ? $column : ' ordem ';
+	static function order($column, $sort='ASC') {
 
 		$prefix = preg_match("/ORDER BY/", self::$sql) ? "," : " ORDER BY ";
 
@@ -225,12 +270,14 @@ Class DB
 		return self::get()[0];
 	}
 
-	static function limit($limit, $offset=null) {
+	static function limit($limit, $offset = 0) {
 
-		$o = isset($offset) ? $limit : 0;
-		$l = isset($offset) ? $offset : $limit;
+		$o = $offset !== 0 ? $limit : 0;
+		$l = $offset !== 0 ? $offset : $limit;
 
 		self::$sql .= " LIMIT $l OFFSET $o ";
+
+		//dd(self::$sql);
 		return new self;
 	}
 
@@ -248,13 +295,32 @@ Class DB
 		return new self;
 	}
 
+	static function paginate($page = 1, $limit = 20){
+
+		//$sql = self::$sql;
+
+		//$total = self::count();
+
+		//$pages = ceil($total / $limit);
+
+		$offset = ($page - 1) * $limit;
+
+		//dd($limit);
+
+		//self::$sql = $sql;
+
+		self::limit($limit,$offset);
+
+		return new self;
+	}
+
 	static function select($columns='*') {
 
 		if ($columns!='*') $columns = is_array($columns) ? implode(',', $columns) : $columns;
 
-		self::prefix();
+		//self::prefix();
 
-		self::$sql = str_replace('SELECT *', 'SELECT '.$columns, self::$sql);
+		self::$sql = 'SELECT '.$columns.' ';
 
 		return new self;
 	}
@@ -347,23 +413,20 @@ Class DB
 		return new self;
 	}
 
-	static function find($value, $column=null) {
-
-		$v = isset($column) ? $column : $value;
-		$c = isset($column) ? $value  : 'id';
-
-		self::$sql = " SELECT * FROM ".self::$table." WHERE $c = '$v' ";
-
-		$count = self::$pdo->query(self::$sql)->rowCount();
-
-		return ($count==1) ? self::get()[0] : false;
-
-		self::$sql = null;
-	}
-
 	static function statement( $operator = " AND " ) {
 
 		self::$sql .= preg_match("/WHERE/", self::$sql) ? $operator : " WHERE ";
+
+		return new self;
+	}
+
+
+	static function and($column, $value) {
+
+		$o = isset($operator) ? $value : '=';
+		$v = isset($operator) ? $operator : $value;
+
+		self::$sql .= " AND $column $o '$v' ";
 
 		return new self;
 	}
