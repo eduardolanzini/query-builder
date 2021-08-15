@@ -75,6 +75,8 @@ Class DB
 
 			self::$sql = null;
 
+			self::$table = null;
+
 			return $qry->fetchAll(PDO::FETCH_OBJ);
 
 		} catch (\PDOException $e) {
@@ -105,9 +107,11 @@ Class DB
 
 			if ($count==1) {
 				self::$sql = null;
+				self::$table = null;
 				return $qry->fetch(PDO::FETCH_OBJ);
 			}else{
 				self::$sql = null;
+				self::$table = null;
 				return false;
 			}
 
