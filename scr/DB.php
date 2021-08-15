@@ -161,6 +161,7 @@ Class DB
 			$qry->execute();
 
 			self::$sql = null;
+			self::$table = null;
 
 			return $qry->rowCount();
 
@@ -179,6 +180,7 @@ Class DB
 		self::prefix();
 		echo self::$sql;
 		self::$sql = null;
+		self::$table = null;
 		exit;
 	}
 
@@ -322,14 +324,8 @@ Class DB
 
 		if ($columns!='*') $columns = is_array($columns) ? implode(',', $columns) : $columns;
 
-		//self::prefix();
-
-		if (self::$table) {
-			self::$sql = 'SELECT '.$columns.' FROM '. self::$table . ' ';
-		}else{
-			self::$sql = 'SELECT '.$columns.' ';
-		}
-
+		self::$sql = self::$table ? 'SELECT '.$columns.' FROM '.self::$table.' ' : 'SELECT '.$columns.' ';
+		
 		return new self;
 	}
 
