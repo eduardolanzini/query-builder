@@ -320,7 +320,11 @@ Class DB
 
 		//self::prefix();
 
-		self::$sql = 'SELECT '.$columns.' ';
+		if (self::$table) {
+			self::$sql = 'SELECT '.$columns.' FROM '. self::$table . ' ';
+		}else{
+			self::$sql = 'SELECT '.$columns.' ';
+		}
 
 		return new self;
 	}
