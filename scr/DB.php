@@ -209,12 +209,12 @@ Class DB
 		return self::order($column, $sort);
 	}
 
-	static function orderAsc($column=null) {
+	static function orderAsc($column) {
 
 		return self::order($column, 'ASC');
 	}
 
-	static function orderDesc($column=null) {
+	static function orderDesc($column) {
 
 		return self::order($column, 'DESC');
 	}
